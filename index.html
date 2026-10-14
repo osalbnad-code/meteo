@@ -328,7 +328,16 @@ function dayCode(d,i){
   });
   if(codes.length<6)return fallback;
   const wet=codes.filter(c=>c>=51);
-  if(wet.length&&(rain>=0.3||wet.some(c=>c>=95)))return Math.max(...wet);
+  if(wet.length&&(rain>=0.3||wet.some(c=>c>=95))){
+    if(wet.some(c=>c>=95))return 95;
+    const snow=wet.filter(c=>(c>=71&&c<=77)||c===85||c===86);
+    if(snow.length>=wet.length/2)return 73;
+    /* intensità dalla pioggia totale della giornata */
+    const tot=d.daily.precipitation_sum[i]!=null?d.daily.precipitation_sum[i]:rain;
+    if(tot>=20)return 65;
+    if(tot>=5)return 63;
+    return 61;
+  }
   const fog=codes.filter(c=>c===45||c===48).length;
   if(fog>=codes.length*0.65)return 45;
   const cc=clouds.reduce((a,b)=>a+b,0)/clouds.length;
