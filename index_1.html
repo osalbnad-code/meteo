@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Meteo</title>
+<meta name="theme-color" content="#2F6FB0">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛅</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E8F0F7; --panel:#FFFFFF; --line:#D2DEE9; --ink:#14273A; --muted:#5C7084;
+  --accent:#2F6FB0; --warm:#E89A1C; --rain:#2F6FB0; --hot:#C9502E;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#0D1722; --panel:#162433; --line:#253A4E; --ink:#E3ECF4; --muted:#93A8BC;
+    --accent:#6FA8E0; --warm:#F2B347; --rain:#79B4EC; --hot:#F08A6A}
+}
+*,*::before,*::after{box-sizing:inherit}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:"Outfit",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
+main{max-width:620px;margin:0 auto;padding:18px 16px 40px}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+.top{display:flex;align-items:center;gap:10px}
+.place{font-size:1.5rem;font-weight:700;margin:0;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.icon-btn{border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:8px 12px;font-weight:600;font-size:.95rem}
+.updated{color:var(--muted);font-size:.85rem;margin:2px 0 16px}
+
+.today{background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:20px;display:grid;grid-template-columns:auto 1fr;gap:6px 18px;align-items:center}
+.today .big{font-size:5.2rem;line-height:1;grid-row:span 3}
+.today .lbl{font-size:1.05rem;color:var(--muted);font-weight:600}
+.today .now{font-size:3rem;font-weight:700;line-height:1}
+.today .desc{font-size:1.15rem;font-weight:600}
+.today .meta{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:10px;color:var(--muted);font-size:.95rem}
+.today .meta b{color:var(--ink)}
+
+.days{list-style:none;margin:16px 0 0;padding:0;background:var(--panel);border:1px solid var(--line);border-radius:22px;overflow:hidden}
+.day{display:grid;grid-template-columns:1fr 52px 1.3fr 64px;align-items:center;gap:10px;padding:14px 18px;border-top:1px solid var(--line)}
+.day:first-child{border-top:none}
+.day .name{font-weight:700;font-size:1.1rem}
+.day .name small{display:block;font-weight:400;color:var(--muted);font-size:.8rem}
+.day .ic{font-size:2.1rem;text-align:center;line-height:1}
+.day .txt{font-size:.95rem}
+.day .txt .pr{display:block;color:var(--rain);font-size:.85rem}
+.day .tt{text-align:right;font-variant-numeric:tabular-nums}
+.day .tt .mx{font-weight:700;font-size:1.15rem}
+.day .tt .mn{color:var(--muted);display:block;font-size:.9rem}
+
+.msg{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;margin-top:16px;text-align:center;color:var(--muted)}
+.msg[hidden]{display:none}
+.foot{color:var(--muted);font-size:.78rem;text-align:center;margin-top:18px}
+.foot a{color:inherit}
+
+/* scelta località */
+.sheet{position:fixed;inset:0;background:rgba(5,12,20,.6);display:flex;align-items:flex-start;justify-content:center;padding:calc(env(safe-area-inset-top,0px) + 40px) 16px 16px;z-index:10}
+.sheet[hidden]{display:none}
+.box{background:var(--panel);border-radius:18px;padding:18px;width:100%;max-width:460px}
+.box h2{margin:0 0 10px;font-size:1.2rem}
+.search{display:flex;gap:8px}
+.search input{flex:1;min-width:0;font:inherit;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:11px}
+.btn{border:none;background:var(--accent);color:#fff;border-radius:12px;padding:11px 14px;font-weight:600}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink)}
+.results{list-style:none;margin:10px 0 0;padding:0}
+.results button{width:100%;text-align:left;background:transparent;border:none;border-top:1px solid var(--line);padding:12px 4px}
+.results small{color:var(--muted);display:block}
+.row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+
+@media (max-width:380px){
+  .day{grid-template-columns:1fr 44px 1.1fr 56px;padding:12px 14px;gap:8px}
+  .today .big{font-size:4.2rem}
+}
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <h1 class="place" id="place">Grancia</h1>
+    <button class="icon-btn" id="refresh" aria-label="Aggiorna">↻</button>
+    <button class="icon-btn" id="change">Località</button>
+  </div>
+  <p class="updated" id="updated">Caricamento…</p>
+
+  <section class="today" id="today" hidden>
+    <div class="big" id="tIcon"></div>
+    <div class="lbl" id="tLbl">Oggi</div>
+    <div class="now" id="tNow"></div>
+    <div class="desc" id="tDesc"></div>
+    <div class="meta" id="tMeta"></div>
+  </section>
+
+  <ul class="days" id="days" hidden></ul>
+  <div class="msg" id="msg" hidden></div>
+
+  <p class="foot">Dati meteo <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a></p>
+</main>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="box">
+    <h2>Scegli la località</h2>
+    <div class="search">
+      <input id="q" placeholder="Es. Lugano, Charmey, Milano" autocomplete="off">
+      <button class="btn" id="qGo">Cerca</button>
+    </div>
+    <ul class="results" id="results"></ul>
+    <div class="row">
+      <button class="btn ghost" id="gps">📍 Usa la mia posizione</button>
+      <button class="btn ghost" id="home">🏠 Grancia</button>
+      <button class="btn ghost" id="close">Chiudi</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const HOME={name:'Grancia',lat:45.9681,lon:8.9286};
+const KEY_PLACE='meteo-luogo', KEY_DATA='meteo-dati';
+const GIORNI=['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'];
+const MESI=['gen','feb','mar','apr','mag','giu','lug','ago','set','ott','nov','dic'];
+
+/* codice meteo -> icona e descrizione */
+function wx(code,isDay){
+  if(code===0)return isDay===0?['🌙','Sereno']:['☀️','Sole'];
+  if(code===1)return isDay===0?['🌙','Quasi sereno']:['🌤️','Quasi sempre sole'];
+  if(code===2)return ['⛅','Sole e nuvole'];
+  if(code===3)return ['☁️','Nuvoloso'];
+  if(code===45||code===48)return ['🌫️','Nebbia'];
+  if(code>=51&&code<=57)return ['🌦️','Pioggerella'];
+  if(code===61||code===80)return ['🌦️','Pioggia debole'];
+  if(code===63||code===81)return ['🌧️','Pioggia'];
+  if(code===65||code===82)return ['🌧️','Pioggia forte'];
+  if(code===66||code===67)return ['🌧️','Pioggia gelata'];
+  if((code>=71&&code<=77)||code===85||code===86)return ['🌨️','Neve'];
+  if(code>=95)return ['⛈️','Temporale'];
+  return ['☁️','Variabile'];
+}
+
+let place=HOME;
+try{const p=JSON.parse(localStorage.getItem(KEY_PLACE));if(p&&p.lat)place=p}catch(e){}
+function savePlace(p){place=p;try{localStorage.setItem(KEY_PLACE,JSON.stringify(p))}catch(e){}}
+
+/* ================= dati ================= */
+async function load(){
+  $('place').textContent=place.name;
+  $('updated').textContent='Aggiornamento…';
+  const url='https://api.open-meteo.com/v1/forecast?latitude='+place.lat+'&longitude='+place.lon+
+    '&current=temperature_2m,apparent_temperature,weather_code,is_day,wind_speed_10m'+
+    '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum'+
+    '&timezone=auto&forecast_days=7';
+  try{
+    const r=await fetch(url); if(!r.ok)throw new Error('HTTP '+r.status);
+    const data=await r.json();
+    const pack={place,data,at:Date.now()};
+    try{localStorage.setItem(KEY_DATA,JSON.stringify(pack))}catch(e){}
+    render(pack,false);
+  }catch(e){
+    let cached=null; try{cached=JSON.parse(localStorage.getItem(KEY_DATA))}catch(_){}
+    if(cached&&cached.place&&cached.place.name===place.name){render(cached,true)}
+    else{
+      $('today').hidden=true;$('days').hidden=true;
+      $('msg').hidden=false;$('msg').textContent='Non riesco a scaricare le previsioni. Controlla la connessione e tocca ↻.';
+      $('updated').textContent='';
+    }
+  }
+}
+
+function render(pack,stale){
+  const d=pack.data, c=d.current, dy=d.daily;
+  $('msg').hidden=true;
+  const at=new Date(pack.at);
+  $('updated').textContent=(stale?'Senza connessione. Ultimo aggiornamento ':'Aggiornato alle ')+String(at.getHours()).padStart(2,'0')+':'+String(at.getMinutes()).padStart(2,'0')+(stale?' del '+at.getDate()+' '+MESI[at.getMonth()]:'');
+
+  /* oggi */
+  const [ic,desc]=wx(c.weather_code,c.is_day);
+  $('tIcon').textContent=ic;
+  $('tNow').textContent=Math.round(c.temperature_2m)+'°';
+  $('tDesc').textContent=desc;
+  const pr0=dy.precipitation_probability_max[0];
+  $('tMeta').innerHTML='<span>Max <b>'+Math.round(dy.temperature_2m_max[0])+'°</b></span><span>Min <b>'+Math.round(dy.temperature_2m_min[0])+'°</b></span>'+
+    '<span>Percepita <b>'+Math.round(c.apparent_temperature)+'°</b></span>'+
+    (pr0!=null?'<span>Pioggia <b>'+pr0+'%</b></span>':'')+
+    '<span>Vento <b>'+Math.round(c.wind_speed_10m)+' km/h</b></span>';
+  $('today').hidden=false;
+
+  /* 7 giorni */
+  const ul=$('days'); ul.innerHTML='';
+  dy.time.forEach((t,i)=>{
+    const [y,m,dd]=t.split('-').map(Number), date=new Date(y,m-1,dd);
+    const name=i===0?'Oggi':i===1?'Domani':GIORNI[date.getDay()];
+    const [ic,desc]=wx(dy.weather_code[i],1);
+    const p=dy.precipitation_probability_max[i], mm=dy.precipitation_sum[i];
+    const li=document.createElement('li'); li.className='day';
+    li.innerHTML='<div class="name">'+name+'<small>'+dd+' '+MESI[m-1]+'</small></div>'+
+      '<div class="ic" aria-hidden="true">'+ic+'</div>'+
+      '<div class="txt">'+desc+(p!=null&&p>=20?'<span class="pr">💧 '+p+'%'+(mm>=0.5?' · '+(Math.round(mm*10)/10)+' mm':'')+'</span>':'')+'</div>'+
+      '<div class="tt"><span class="mx">'+Math.round(dy.temperature_2m_max[i])+'°</span><span class="mn">'+Math.round(dy.temperature_2m_min[i])+'°</span></div>';
+    ul.appendChild(li);
+  });
+  ul.hidden=false;
+}
+
+/* ================= località ================= */
+function openSheet(){$('sheet').hidden=false;$('results').innerHTML='';$('q').value='';setTimeout(()=>$('q').focus(),50)}
+function closeSheet(){$('sheet').hidden=true}
+function choose(p){savePlace(p);closeSheet();load()}
+async function search(){
+  const q=$('q').value.trim(); if(!q)return;
+  const ul=$('results'); ul.innerHTML='<li style="padding:10px;color:var(--muted)">Cerco…</li>';
+  try{
+    const r=await fetch('https://geocoding-api.open-meteo.com/v1/search?count=6&language=it&format=json&name='+encodeURIComponent(q));
+    const j=await r.json(); ul.innerHTML='';
+    if(!j.results||!j.results.length){ul.innerHTML='<li style="padding:10px;color:var(--muted)">Nessuna località trovata. Prova con un altro nome.</li>';return}
+    j.results.forEach(x=>{
+      const li=document.createElement('li'), b=document.createElement('button');
+      b.innerHTML='<b></b><small></small>';
+      b.querySelector('b').textContent=x.name;
+      b.querySelector('small').textContent=[x.admin1,x.country].filter(Boolean).join(', ');
+      b.onclick=()=>choose({name:x.name,lat:x.latitude,lon:x.longitude});
+      li.appendChild(b); ul.appendChild(li);
+    });
+  }catch(e){ul.innerHTML='<li style="padding:10px;color:var(--muted)">Ricerca non riuscita: controlla la connessione.</li>'}
+}
+$('change').onclick=openSheet;
+$('close').onclick=closeSheet;
+$('sheet').addEventListener('click',e=>{if(e.target===$('sheet'))closeSheet()});
+$('qGo').onclick=search;
+$('q').addEventListener('keydown',e=>{if(e.key==='Enter')search()});
+$('home').onclick=()=>choose(HOME);
+$('gps').onclick=()=>{
+  if(!navigator.geolocation){alert('La posizione non è disponibile su questo dispositivo.');return}
+  $('gps').textContent='📍 Cerco…';
+  navigator.geolocation.getCurrentPosition(
+    pos=>{$('gps').textContent='📍 Usa la mia posizione';choose({name:'La mia posizione',lat:+pos.coords.latitude.toFixed(4),lon:+pos.coords.longitude.toFixed(4)})},
+    ()=>{$('gps').textContent='📍 Usa la mia posizione';alert('Posizione non consentita. Cerca la località per nome.')},
+    {timeout:10000,maximumAge:600000});
+};
+$('refresh').onclick=load;
+
+/* aggiorna all'apertura, quando torni sulla pagina e ogni 30 minuti */
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden)return;
+  let c=null;try{c=JSON.parse(localStorage.getItem(KEY_DATA))}catch(e){}
+  if(!c||Date.now()-c.at>15*60000)load();
+});
+setInterval(load,30*60000);
+load();
+})();
+</script>
+</body>
+</html>
