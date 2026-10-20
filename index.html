@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Meteo</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <meta name="theme-color" content="#2F6FB0">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⛅</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -127,7 +130,33 @@ button{font:inherit;color:inherit;cursor:pointer}
 .hour .w{color:var(--muted);font-size:.85rem;text-align:right;white-space:nowrap}
 .src{color:var(--muted);font-size:.78rem;text-align:center;margin-top:10px}
 
+/* dati professionali */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}
+.stats[hidden]{display:none}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px 12px 10px;min-width:0}
+.stat .k{color:var(--muted);font-size:.74rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.stat .v{font-size:1.25rem;font-weight:700;margin-top:4px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat .v small{font-size:.75rem;font-weight:600;color:var(--muted)}
+.stat .s{color:var(--muted);font-size:.8rem;margin-top:2px;line-height:1.25}
+.arr{display:inline-block;color:var(--accent);font-weight:700}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:16px 18px;margin-top:16px}
+.card[hidden]{display:none}
+.card h2{margin:0 0 8px;font-size:1rem}
+.say{font-weight:600}
+.bars15{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;align-items:end;height:56px;margin-top:12px;border-bottom:1px solid var(--line)}
+.bars15 i{display:block;background:var(--rain);border-radius:4px 4px 0 0;min-height:2px;opacity:.85}
+.lbl15{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;font-size:.68rem;color:var(--muted);text-align:center;margin-top:4px;font-variant-numeric:tabular-nums}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;font-weight:700;font-size:.85rem;margin-left:4px}
+.aqgrid{display:flex;flex-wrap:wrap;gap:6px 18px;color:var(--muted);font-size:.95rem;margin-top:10px}
+.aqgrid b{color:var(--ink)}
+.conf{display:block;font-size:.72rem;font-weight:700;margin-top:2px}
+.conf.alta{color:#2E9B5F}.conf.media{color:var(--warm)}.conf.bassa{color:var(--hot)}
+.links{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:18px}
+.links a{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:8px 14px;color:var(--ink);text-decoration:none;font-weight:600;font-size:.9rem}
+.note{color:var(--muted);font-size:.78rem;margin:8px 0 0}
+
 @media (max-width:520px){
+  .stats{grid-template-columns:repeat(2,1fr)}
   .top{flex-wrap:wrap}
   .place{flex:1 1 100%;white-space:normal;font-size:1.35rem}
   .top .icon-btn{flex:1}
@@ -161,6 +190,20 @@ button{font:inherit;color:inherit;cursor:pointer}
     <div class="meta" id="tMeta"></div>
   </section>
 
+  <section class="card" id="nc" hidden>
+    <h2>☔ Prossime 2 ore</h2>
+    <div class="say" id="ncSay"></div>
+    <div class="bars15" id="ncBars" aria-hidden="true"></div>
+    <div class="lbl15" id="ncLbl" aria-hidden="true"></div>
+  </section>
+
+  <section class="stats" id="stats" hidden></section>
+
+  <section class="card" id="aq" hidden>
+    <h2>🌿 Aria e pollini</h2>
+    <div id="aqBody"></div>
+  </section>
+
   <section class="moon" id="moon" hidden>
     <div class="mi" id="mIcon"></div>
     <div class="mt" id="mName"></div>
@@ -173,7 +216,10 @@ button{font:inherit;color:inherit;cursor:pointer}
   <ul class="days" id="days" hidden></ul>
   <div class="msg" id="msg" hidden></div>
 
-  <p class="foot">Dati meteo <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a> · modello svizzero MeteoSvizzera ICON-CH</p>
+  <div class="links">
+    <a href="https://www.meteosvizzera.admin.ch" target="_blank" rel="noopener">⚠️ Allerte e radar MeteoSvizzera</a>
+  </div>
+  <p class="foot">Dati meteo <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a> · modello svizzero MeteoSvizzera ICON-CH · aria e pollini CAMS · affidabilità da 40 scenari ICON</p>
 </main>
 
 <!-- scelta località -->
@@ -214,7 +260,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 (function(){
 const $=id=>document.getElementById(id);
 const HOME={name:'Grancia',lat:45.9681,lon:8.9286};
-const KEY_PLACE='meteo-luogo', KEY_DATA='meteo-dati-v2', KEY_FAV='meteo-preferiti';
+const KEY_PLACE='meteo-luogo', KEY_DATA='meteo-dati-v3', KEY_FAV='meteo-preferiti';
 const GIORNI=['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'];
 const MESI=['gen','feb','mar','apr','mag','giu','lug','ago','set','ott','nov','dic'];
 const pad=n=>String(n).padStart(2,'0');
@@ -265,8 +311,44 @@ $('star').onclick=()=>{
 };
 
 /* ================= dati ================= */
-const HV='temperature_2m,weather_code,cloud_cover,precipitation,precipitation_probability,wind_speed_10m,is_day,freezing_level_height';
-const CV='temperature_2m,apparent_temperature,weather_code,is_day,wind_speed_10m';
+const HV='temperature_2m,weather_code,cloud_cover,precipitation,precipitation_probability,wind_speed_10m,is_day,freezing_level_height,'+
+  'wind_gusts_10m,wind_direction_10m,relative_humidity_2m,dew_point_2m,pressure_msl,visibility,uv_index';
+const CV='temperature_2m,apparent_temperature,weather_code,is_day,wind_speed_10m,wind_gusts_10m,wind_direction_10m,relative_humidity_2m,dew_point_2m,pressure_msl';
+const DV='weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,snowfall_sum,sunrise,sunset,'+
+  'uv_index_max,wind_gusts_10m_max,wind_direction_10m_dominant,sunshine_duration,precipitation_hours';
+const POLL=[['alder_pollen','Ontano'],['birch_pollen','Betulla'],['grass_pollen','Graminacee'],['mugwort_pollen','Artemisia'],['olive_pollen','Olivo'],['ragweed_pollen','Ambrosia']];
+
+/* utilità per i dati professionali */
+const DIRS=['N','NE','E','SE','S','SO','O','NO'];
+const dirTxt=deg=>deg==null?'':DIRS[Math.round((((deg%360)+360)%360)/45)%8];
+const arrow=deg=>deg==null?'':'<span class="arr" style="transform:rotate('+Math.round((deg+180)%360)+'deg)" aria-hidden="true">↑</span>';
+const gv=(arr,k)=>arr&&arr[k]!=null?arr[k]:null;
+function uvCat(u){if(u==null)return null;u=Math.round(u);
+  return u<=2?['basso','#2E9B5F']:u<=5?['moderato','#C99A00']:u<=7?['alto','#E07B1F']:u<=10?['molto alto','#C9402E']:['estremo','#8E44AD']}
+function aqCat(v){return v<=20?['buona','#2E9B5F','#fff']:v<=40?['discreta','#7DB542','#14273A']:v<=60?['moderata','#E8C547','#14273A']:
+  v<=80?['scadente','#E07B1F','#fff']:v<=100?['molto scadente','#C9402E','#fff']:['pessima','#8E44AD','#fff']}
+const polLvl=v=>v<10?'basso':v<50?'moderato':v<200?'alto':'molto alto';
+const hrs=sec=>{if(sec==null)return '–';const h=sec/3600;return (h<10?Math.round(h*2)/2:Math.round(h)).toString().replace('.',',')+' h'};
+
+/* affidabilità: 40 scenari del modello ICON, per giorno */
+function ensSummary(e){
+  if(!e||!e.hourly||!e.hourly.time)return null;
+  const h=e.hourly;
+  const tK=Object.keys(h).filter(k=>/^temperature_2m(_member\d+)?$/.test(k));
+  const pK=Object.keys(h).filter(k=>/^precipitation(_member\d+)?$/.test(k));
+  const days={}; h.time.forEach((t,i)=>{const d=t.slice(0,10);(days[d]=days[d]||[]).push(i)});
+  const out={};
+  Object.entries(days).forEach(([d,idx])=>{
+    if(idx.length<20)return;
+    const mx=tK.map(k=>Math.max(...idx.map(i=>h[k][i]).filter(v=>v!=null))).filter(Number.isFinite).sort((a,b)=>a-b);
+    if(mx.length<5)return;
+    const q=p=>mx[Math.round(p*(mx.length-1))];
+    const lo=q(.1),hi=q(.9),spread=hi-lo;
+    const rp=pK.length?pK.filter(k=>idx.reduce((s,i)=>s+(h[k][i]||0),0)>=1).length/pK.length:null;
+    out[d]={lo,hi,spread,conf:spread<=2.5?'alta':spread<=5?'media':'bassa',rain:rp==null?null:Math.round(rp*100),n:mx.length};
+  });
+  return out;
+}
 async function getJSON(url){const r=await fetch(url);if(!r.ok)throw new Error('HTTP '+r.status);return r.json()}
 
 /* unisce il modello globale (7 giorni) con MeteoSvizzera ICON-CH (fino a 5 giorni):
@@ -276,7 +358,7 @@ function merge(a,b){
   d.hourly.src=d.hourly.time.map(()=>0); d.daily.src=d.daily.time.map(()=>0); d.swissUntil=null;
   if(!b||!b.hourly||!b.hourly.time)return d;
   const idx={}; b.hourly.time.forEach((t,k)=>idx[t]=k);
-  const keys=['temperature_2m','weather_code','cloud_cover','precipitation','wind_speed_10m','is_day'];
+  const keys=['temperature_2m','weather_code','cloud_cover','precipitation','wind_speed_10m','is_day','wind_gusts_10m','wind_direction_10m','relative_humidity_2m'];
   d.hourly.time.forEach((t,k)=>{
     const j=idx[t]; if(j===undefined||b.hourly.temperature_2m[j]==null)return;
     keys.forEach(key=>{const x=b.hourly[key]&&b.hourly[key][j];if(x!=null)d.hourly[key][k]=x});
@@ -288,10 +370,11 @@ function merge(a,b){
     const T=ks.map(k=>d.hourly.temperature_2m[k]);
     d.daily.temperature_2m_max[i]=Math.max(...T); d.daily.temperature_2m_min[i]=Math.min(...T);
     d.daily.precipitation_sum[i]=ks.reduce((s,k)=>s+(d.hourly.precipitation[k]||0),0);
+    if(d.daily.wind_gusts_10m_max&&d.hourly.wind_gusts_10m){const G=ks.map(k=>d.hourly.wind_gusts_10m[k]).filter(v=>v!=null);if(G.length)d.daily.wind_gusts_10m_max[i]=Math.max(...G)}
     d.daily.src[i]=1;
   });
   if(b.current&&b.current.temperature_2m!=null){
-    ['temperature_2m','apparent_temperature','weather_code','is_day','wind_speed_10m'].forEach(k=>{if(b.current[k]!=null)d.current[k]=b.current[k]});
+    ['temperature_2m','apparent_temperature','weather_code','is_day','wind_speed_10m','wind_gusts_10m','wind_direction_10m','relative_humidity_2m'].forEach(k=>{if(b.current[k]!=null)d.current[k]=b.current[k]});
     d.current.swiss=true;
   }
   return d;
@@ -302,14 +385,17 @@ async function load(){
   $('place').textContent=place.name; renderFavs();
   $('updated').textContent='Aggiornamento…';
   const base='https://api.open-meteo.com/v1/forecast?latitude='+place.lat+'&longitude='+place.lon+'&timezone=auto&forecast_days=7';
-  const A=base+'&current='+CV+'&hourly='+HV+
-    '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,snowfall_sum,sunrise,sunset';
-  const B=base+'&models=meteoswiss_icon_seamless&current='+CV+'&hourly=temperature_2m,weather_code,cloud_cover,precipitation,wind_speed_10m,is_day';
+  const A=base+'&current='+CV+'&hourly='+HV+'&daily='+DV+'&minutely_15=precipitation';
+  const B=base+'&models=meteoswiss_icon_seamless&current='+CV+'&hourly=temperature_2m,weather_code,cloud_cover,precipitation,wind_speed_10m,is_day,wind_gusts_10m,wind_direction_10m,relative_humidity_2m';
+  const ll='latitude='+place.lat+'&longitude='+place.lon+'&timezone=auto';
+  const AQ='https://air-quality-api.open-meteo.com/v1/air-quality?'+ll+'&current=european_aqi,pm2_5,pm10,ozone,'+POLL.map(x=>x[0]).join(',');
+  const EN='https://ensemble-api.open-meteo.com/v1/ensemble?'+ll+'&forecast_days=7&models=icon_seamless&hourly=temperature_2m,precipitation';
   try{
-    const [ra,rb]=await Promise.allSettled([getJSON(A),getJSON(B)]);
+    const [ra,rb,rq,re]=await Promise.allSettled([getJSON(A),getJSON(B),getJSON(AQ),getJSON(EN)]);
     if(ra.status!=='fulfilled')throw ra.reason;
     const data=merge(ra.value,rb.status==='fulfilled'?rb.value:null);
-    const pack={place,data,at:Date.now()};
+    let ens=null; try{ens=re.status==='fulfilled'?ensSummary(re.value):null}catch(_){}
+    const pack={place,data,aq:rq.status==='fulfilled'&&rq.value.current?{current:rq.value.current}:null,ens,at:Date.now()};
     try{localStorage.setItem(KEY_DATA,JSON.stringify(pack))}catch(e){}
     PACK=pack; render(pack,false);
   }catch(e){
@@ -317,6 +403,7 @@ async function load(){
     if(cached&&cached.place&&same(cached.place,place)){PACK=cached;render(cached,true)}
     else{
       $('today').hidden=true;$('days').hidden=true;$('moon').hidden=true;$('hint').hidden=true;
+      $('nc').hidden=true;$('stats').hidden=true;$('aq').hidden=true;
       $('msg').hidden=false;$('msg').textContent='Non riesco a scaricare le previsioni. Controlla la connessione e tocca ↻.';
       $('updated').textContent='';$('model').textContent='';
     }
@@ -480,6 +567,10 @@ function render(pack,stale){
     (dy.sunrise?'<span>🌅 Alba <b>'+hhmm(dy.sunrise[0])+'</b></span><span>🌇 Tramonto <b>'+hhmm(dy.sunset[0])+'</b></span>':'');
   $('today').hidden=false;
 
+  try{renderNowcast(d)}catch(e){$('nc').hidden=true}
+  try{renderStats(d)}catch(e){$('stats').hidden=true}
+  try{renderAQ(pack.aq)}catch(e){$('aq').hidden=true}
+
   /* luna */
   try{
     const now=new Date(), il=LUNA.illum(now), mn=LUNA.name(il.phase)[1];
@@ -503,14 +594,19 @@ function render(pack,stale){
   dy.time.forEach((t,i)=>{
     const [ic,desc]=wx(dayCode(d,i),1), dt=dateOf(t);
     const p=dy.precipitation_probability_max[i], mm=dy.precipitation_sum[i];
+    const sd=gv(dy.sunshine_duration,i), uvm=gv(dy.uv_index_max,i);
+    const ens=pack.ens&&pack.ens[t];
+    const extra=(sd!=null?'☀️ '+hrs(sd)+' di sole':'')+(uvm!=null?(sd!=null?' · ':'')+'UV '+r0(uvm):'');
     const li=document.createElement('li'); li.className='day'; li.tabIndex=0;
     li.setAttribute('role','button'); li.setAttribute('aria-label','Previsione ora per ora di '+dayLabel(i,t));
     li.innerHTML='<div class="name">'+dayLabel(i,t)+'<small>'+shortDate(t)+'</small></div>'+
       '<div class="ic" aria-hidden="true">'+ic+'</div>'+
       '<div class="txt">'+desc+(p!=null&&p>=20&&(!dy.src[i]||mm>=0.2)?'<span class="pr">💧 '+p+'%'+(mm>=0.5?' · '+(Math.round(mm*10)/10)+' mm':'')+'</span>':'')+
       (dy.snowfall_sum&&dy.snowfall_sum[i]>=0.5?'<span class="pr">❄️ neve '+(Math.round(dy.snowfall_sum[i]*10)/10)+' cm</span>':'')+
+      (extra?'<span class="sun">'+extra+'</span>':'')+
       (dy.sunrise?'<span class="sun">🌅 '+hhmm(dy.sunrise[i])+' · 🌇 '+hhmm(dy.sunset[i])+' · '+moonSVG(LUNA.illum(new Date(dt.getFullYear(),dt.getMonth(),dt.getDate(),21)).phase,false)+'</span>':'')+'</div>'+
-      '<div class="tt"><span class="mx">'+r0(dy.temperature_2m_max[i])+'°</span><span class="mn">'+r0(dy.temperature_2m_min[i])+'°</span></div>'+
+      '<div class="tt"><span class="mx">'+r0(dy.temperature_2m_max[i])+'°</span><span class="mn">'+r0(dy.temperature_2m_min[i])+'°</span>'+
+        (ens&&i>0?'<span class="conf '+ens.conf+'" title="Affidabilità '+ens.conf+': massima tra '+r0(ens.lo)+'° e '+r0(ens.hi)+'°">±'+Math.max(1,r0(ens.spread/2))+'°</span>':'')+'</div>'+
       '<div class="go" aria-hidden="true">›</div>';
     li.onclick=()=>openDay(i);
     li.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openDay(i)}};
@@ -543,6 +639,19 @@ function openDay(i){
   if(fzs.length){const a=Math.min(...fzs),b=Math.max(...fzs);
     $('dSum').innerHTML+='<span>Zero termico <b>'+(Math.abs(b-a)<150?mt(a):mt(a)+'–'+mt(b))+' m</b></span>'}
   if(d.elevation!=null)$('dSum').innerHTML+='<span>⛰️ Quota <b>'+mt(d.elevation)+' m</b></span>';
+  {
+    let x='';
+    const sd=gv(dy.sunshine_duration,i), ph=gv(dy.precipitation_hours,i), uvm=gv(dy.uv_index_max,i);
+    const gm=gv(dy.wind_gusts_10m_max,i), wdd=gv(dy.wind_direction_10m_dominant,i);
+    if(sd!=null)x+='<span>☀️ Sole <b>'+hrs(sd)+'</b></span>';
+    if(ph!=null)x+='<span>🌧️ Ore di pioggia <b>'+r0(ph)+' h</b></span>';
+    if(uvm!=null){const u=uvCat(uvm);x+='<span>UV max <b style="color:'+u[1]+'">'+r0(uvm)+' · '+u[0]+'</b></span>'}
+    if(gm!=null)x+='<span>Raffiche fino a <b>'+r0(gm)+' km/h</b>'+(wdd!=null?' da <b>'+dirTxt(wdd)+'</b>':'')+'</span>';
+    const en=PACK.ens&&PACK.ens[date];
+    if(en)x+='<span>Affidabilità <b class="conf '+en.conf+'" style="display:inline">'+en.conf+'</b> · max tra <b>'+r0(en.lo)+'°</b> e <b>'+r0(en.hi)+'°</b>'+
+      (en.rain!=null?' · pioggia in <b>'+en.rain+'%</b> degli scenari':'')+'</span>';
+    $('dSum').innerHTML+=x;
+  }
 
   $('dChart').innerHTML=chart(ks.map(k=>({h:h.time[k].slice(11,13),t:h.temperature_2m[k],p:h.precipitation_probability[k],mm:h.precipitation[k]})));
 
@@ -554,7 +663,7 @@ function openDay(i){
     li.innerHTML='<span class="h">'+h.time[k].slice(11,16)+'</span><span class="i" title="'+desc+'">'+ic+'</span>'+
       '<span class="t">'+r0(h.temperature_2m[k])+'°</span>'+
       '<span class="p">'+(p!=null&&p>=10?'💧 '+p+'%':'')+(mm>=0.1?' · '+(Math.round(mm*10)/10)+' mm':'')+'</span>'+
-      '<span class="w">💨 '+r0(h.wind_speed_10m[k])+' km/h</span>';
+      windCell(h,k);
     ul.appendChild(li);
   });
   const sw=ks.filter(k=>h.src[k]).length;
@@ -562,6 +671,80 @@ function openDay(i){
   $('dview').hidden=false; document.body.style.overflow='hidden';
   $('dview').scrollTop=0;
 }
+function windCell(h,k){
+  const ws=h.wind_speed_10m[k], wd=gv(h.wind_direction_10m,k), g=gv(h.wind_gusts_10m,k);
+  return '<span class="w"'+(wd!=null?' title="Vento da '+dirTxt(wd)+'"':'')+'>'+(wd!=null?arrow(wd)+' '+dirTxt(wd)+' ':'💨 ')+r0(ws)+
+    (g!=null&&g>=ws+8?'<small> · raff. '+r0(g)+'</small>':'')+' km/h</span>';
+}
+
+/* ================= prossime 2 ore (passi di 15 minuti) ================= */
+function renderNowcast(d){
+  const m=d.minutely_15, box=$('nc');
+  if(!m||!m.time||!m.precipitation||!d.current||!d.current.time){box.hidden=true;return}
+  const cur=d.current.time;
+  let s=m.time.findIndex(t=>t>=cur);
+  if(s<0){box.hidden=true;return}
+  if(s>0&&m.time[s]>cur)s--;
+  const sl=m.time.slice(s,s+8).map((t,i)=>({t:t.slice(11,16),mm:m.precipitation[s+i]}));
+  if(sl.length<4||sl.every(x=>x.mm==null)){box.hidden=true;return}
+  const wet=x=>(x.mm||0)>=0.1;
+  const tot=sl.reduce((a,x)=>a+(x.mm||0),0);
+  let say;
+  if(!sl.some(wet))say='Nessuna pioggia prevista nelle prossime 2 ore.';
+  else if(wet(sl[0])){const e=sl.findIndex(x=>!wet(x));say=e<0?'Pioggia in corso, continua per le prossime 2 ore.':'Pioggia in corso, dovrebbe smettere verso le '+sl[e].t+'.'}
+  else{const k=sl.findIndex(wet);say='Pioggia in arrivo verso le '+sl[k].t+' (tra circa '+(k*15)+' minuti).'}
+  if(tot>=0.2)say+=' Totale circa '+(Math.round(tot*10)/10).toString().replace('.',',')+' mm.';
+  $('ncSay').textContent=say;
+  $('ncBars').innerHTML=sl.map(x=>'<i style="height:'+(wet(x)?Math.max(8,Math.min(100,(x.mm/1.0)*100)):0)+'%" title="'+x.t+': '+(Math.round((x.mm||0)*10)/10)+' mm"></i>').join('');
+  $('ncLbl').innerHTML=sl.map((x,i)=>'<span>'+(i%2===0?x.t:'')+'</span>').join('');
+  box.hidden=false;
+}
+
+/* ================= riquadri: vento, UV, umidità, pressione, visibilità, sole ================= */
+function renderStats(d){
+  const h=d.hourly, c=d.current||{}, dy=d.daily, k=nowIndex(d);
+  const tile=(key,val,sub,color)=>'<div class="stat"><div class="k">'+key+'</div><div class="v"'+(color?' style="color:'+color+'"':'')+'>'+val+'</div>'+(sub?'<div class="s">'+sub+'</div>':'')+'</div>';
+  let out='';
+  const ws=c.wind_speed_10m, wg=c.wind_gusts_10m!=null?c.wind_gusts_10m:gv(h.wind_gusts_10m,k);
+  const wd=c.wind_direction_10m!=null?c.wind_direction_10m:gv(h.wind_direction_10m,k);
+  if(ws!=null)out+=tile('Vento',arrow(wd)+' '+r0(ws)+' <small>km/h</small>',[wd!=null?'da '+dirTxt(wd):'',wg!=null?'raffiche '+r0(wg):''].filter(Boolean).join(' · '));
+  const uv=gv(h.uv_index,k), uvm=gv(dy.uv_index_max,0);
+  if(uvm!=null){const u=uvCat(uv!=null?uv:uvm), um=uvCat(uvm);out+=tile('Indice UV',(uv!=null?r0(uv):'–')+' <small>adesso</small>','max oggi '+r0(uvm)+' · '+um[0],u[1])}
+  const rh=c.relative_humidity_2m!=null?c.relative_humidity_2m:gv(h.relative_humidity_2m,k);
+  const dw=c.dew_point_2m!=null?c.dew_point_2m:gv(h.dew_point_2m,k);
+  if(rh!=null)out+=tile('Umidità',r0(rh)+'%',dw!=null?'punto di rugiada '+r0(dw)+'°':'');
+  const pr=c.pressure_msl!=null?c.pressure_msl:gv(h.pressure_msl,k);
+  if(pr!=null){
+    let tr='';
+    if(h.pressure_msl&&k>=3&&h.pressure_msl[k-3]!=null){
+      const dp=h.pressure_msl[k]-h.pressure_msl[k-3];
+      tr=dp>=1?'↗ in salita ('+(dp>0?'+':'')+dp.toFixed(1).replace('.',',')+' in 3 h)':dp<=-1?'↘ in calo ('+dp.toFixed(1).replace('.',',')+' in 3 h)':'→ stabile';
+    }
+    out+=tile('Pressione',r0(pr)+' <small>hPa</small>',tr);
+  }
+  const vis=gv(h.visibility,k);
+  if(vis!=null)out+=tile('Visibilità',(vis>=20000?'> 20':vis>=10000?r0(vis/1000):(Math.round(vis/100)/10).toString().replace('.',','))+' <small>km</small>',vis<1000?'nebbia':vis<5000?'foschia':'buona');
+  const sd=gv(dy.sunshine_duration,0), ph=gv(dy.precipitation_hours,0);
+  if(sd!=null)out+=tile('Sole oggi',hrs(sd),ph!=null?(ph>=1?r0(ph)+' h di pioggia':'niente pioggia'):'');
+  $('stats').innerHTML=out; $('stats').hidden=!out;
+}
+
+/* ================= qualità dell'aria e pollini ================= */
+function renderAQ(aq){
+  const box=$('aq'), c=aq&&aq.current;
+  if(!c||c.european_aqi==null){box.hidden=true;return}
+  const [cat,bg,fg]=aqCat(c.european_aqi);
+  let html='<div>Qualità dell’aria <span class="pill" style="background:'+bg+';color:'+fg+'">'+cat+' · '+r0(c.european_aqi)+'</span></div>';
+  html+='<div class="aqgrid">'+(c.pm2_5!=null?'<span>PM2.5 <b>'+r0(c.pm2_5)+'</b> µg/m³</span>':'')+(c.pm10!=null?'<span>PM10 <b>'+r0(c.pm10)+'</b> µg/m³</span>':'')+
+    (c.ozone!=null?'<span>Ozono <b>'+r0(c.ozone)+'</b> µg/m³</span>':'')+'</div>';
+  const any=POLL.some(([key])=>c[key]!=null);
+  const pol=POLL.filter(([key])=>c[key]!=null&&c[key]>=1);
+  html+='<div class="aqgrid">'+(pol.length?pol.map(([key,n])=>'<span>'+n+' <b>'+polLvl(c[key])+'</b></span>').join(''):
+    '<span>Pollini: <b>'+(any?'assenti in questo momento':'dato non disponibile qui')+'</b></span>')+'</div>';
+  html+='<p class="note">Indice europeo della qualità dell’aria (0–20 buona, oltre 60 scadente). Livelli dei pollini indicativi.</p>';
+  $('aqBody').innerHTML=html; box.hidden=false;
+}
+
 function closeDay(){$('dview').hidden=true;document.body.style.overflow=''}
 $('dClose').onclick=closeDay;
 $('dPrev').onclick=()=>{if(curDay>0)openDay(curDay-1)};
@@ -675,6 +858,12 @@ document.addEventListener('visibilitychange',()=>{
 setInterval(load,30*60000);
 load();
 })();
+</script>
+<script>
+// Rende Meteo installabile come app sul telefono
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
 </script>
 </body>
 </html>
