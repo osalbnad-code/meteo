@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Laghi</title>
+<meta name="theme-color" content="#2F6FB0">
+<style>
+:root{
+  --bg:#EEF3F5; --card:#FFFFFF; --ink:#13293D; --muted:#5B6F80; --line:#D3DEE5;
+  --lake:#2F6FB0; --lakefill:rgba(47,111,176,.16);
+  --molto-sotto:#A4521E; --sotto:#C8862B; --norma:#3E7F5C; --sopra:#2F6FB0; --molto-sopra:#1C3F8F; --piena:#B42335;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0F1A24; --card:#172634; --ink:#E6EEF4; --muted:#93A7B8; --line:#2A3D4F;
+    --lake:#6EA6E0; --lakefill:rgba(110,166,224,.20);
+    --molto-sotto:#B9602A; --sotto:#E3B060; --norma:#72C094; --sopra:#6EA6E0; --molto-sopra:#9DB8F5; --piena:#F07082;
+    color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  padding:calc(env(safe-area-inset-top,0px) + 16px) 16px calc(env(safe-area-inset-bottom,0px) + 24px);
+  line-height:1.4;
+}
+.wrap{max-width:640px;margin:0 auto}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+header h1{font-size:1.5rem;margin:0;font-weight:700}
+.btn{
+  font:inherit;font-size:.95rem;color:var(--lake);background:var(--card);
+  border:1px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer;text-decoration:none;
+}
+.btn:focus-visible{outline:3px solid var(--lake);outline-offset:2px}
+.lago{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px}
+.top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.top h2{margin:0;font-size:1.2rem}
+.staz{color:var(--muted);font-size:.85rem}
+.livello{font-size:2.6rem;font-weight:700;letter-spacing:-.02em;margin:6px 0 0;font-variant-numeric:tabular-nums}
+.livello small{font-size:1rem;font-weight:500;color:var(--muted);margin-left:4px}
+.stato{display:inline-block;margin-top:8px;padding:5px 11px;border-radius:999px;color:#fff;font-weight:600;font-size:.95rem}
+.dark-text{color:#13293D}
+.righe{margin:12px 0 0;display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:.95rem}
+.righe dt{color:var(--muted)}
+.righe dd{margin:0;font-variant-numeric:tabular-nums}
+.grafico{margin-top:14px}
+.grafico svg{width:100%;height:auto;display:block}
+.legenda{display:flex;gap:16px;color:var(--muted);font-size:.8rem;margin-top:4px;flex-wrap:wrap}
+.legenda span::before{content:"";display:inline-block;width:18px;height:0;border-top:2px solid var(--lake);vertical-align:middle;margin-right:6px}
+.legenda span.media::before{border-top:2px dashed var(--muted)}
+.nota{color:var(--muted);font-size:.85rem;margin-top:6px}
+.errore{background:var(--card);border:1px solid var(--piena);border-radius:12px;padding:14px;margin-bottom:14px}
+.errore a{color:var(--lake)}
+footer{color:var(--muted);font-size:.8rem;margin-top:8px}
+footer a{color:var(--lake)}
+@media (prefers-reduced-motion:no-preference){ .lago{transition:opacity .3s} }
+.caricamento{opacity:.55}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Laghi</h1>
+    <div>
+      <a class="btn" href="./">← Meteo</a>
+      <button class="btn" id="aggiorna" type="button">Aggiorna</button>
+    </div>
+  </header>
+
+  <div id="errore"></div>
+  <div id="laghi"></div>
+
+  <footer>
+    Dati: Ufficio federale dell'ambiente (UFAM), tramite api.existenz.ch. Valori provvisori, aggiornati ogni 10 minuti.
+    Medie mensili di lungo periodo dalle schede ufficiali delle stazioni
+    (<a href="https://www.hydrodaten.admin.ch/it/seen-und-fluesse/stations/2022" target="_blank" rel="noopener">Locarno</a>,
+    <a href="https://www.hydrodaten.admin.ch/it/seen-und-fluesse/stations/2101" target="_blank" rel="noopener">Melide</a>).
+  </footer>
+</div>
+
+<script>
+// ===== Configurazione dei laghi =====
+// medie: livello medio mensile di lungo periodo (m s.l.m.), gennaio..dicembre, dalla scheda UFAM della stazione
+// pericolo: soglie dei gradi di pericolo piena UFAM (grado 2,3,4,5)
+// soglie: scarti in cm dalla media del mese per "molto sotto / sotto / sopra / molto sopra"
+const LAGHI = [
+  {
+    id: "2022", nome: "Lago Maggiore", stazione: "Locarno",
+    medie: [193.51,193.38,193.30,193.43,193.73,193.77,193.57,193.23,193.24,193.43,193.65,193.66],
+    pericolo: [194.5,195.5,196.0,196.5],
+    soglie: {moltoSotto:-50, sotto:-15, sopra:15, moltoSopra:50}
+  },
+  {
+    id: "2101", nome: "Lago di Lugano", stazione: "Melide, Ferrera",
+    medie: [270.42,270.39,270.42,270.48,270.56,270.55,270.51,270.48,270.48,270.48,270.52,270.47],
+    pericolo: [270.9,271.1,271.4,271.8],
+    soglie: {moltoSotto:-20, sotto:-7, sopra:7, moltoSopra:25}
+  }
+];
+const API = "https://api.existenz.ch/apiv1/hydro";
+const APP = "meteo-danny";
+const MESI = ["gennaio","febbraio","marzo","aprile","maggio","giugno","luglio","agosto","settembre","ottobre","novembre","dicembre"];
+const CHIAVE_CACHE = "laghi-cache-v1";
+
+// ===== Utilità =====
+const $ = s => document.querySelector(s);
+const fmtM = v => v.toLocaleString("it-CH",{minimumFractionDigits:2,maximumFractionDigits:2});
+const ymd = d => d.toISOString().slice(0,10);
+
+function toMs(t){
+  if (typeof t === "number") return t < 1e12 ? t*1000 : t;
+  const n = Number(t);
+  if (!isNaN(n)) return n < 1e12 ? n*1000 : n;
+  return Date.parse(t);
+}
+
+// Legge il formato di api.existenz.ch in modo tollerante
+function leggiPayload(json){
+  const arr = Array.isArray(json) ? json : (json.payload || json.data || []);
+  return arr.map(r => ({
+    loc: String(r.loc ?? r.location ?? r.station ?? ""),
+    par: String(r.par ?? r.parameter ?? ""),
+    val: Number(r.val ?? r.value),
+    t: toMs(r.timestamp ?? r.time ?? r.t)
+  })).filter(r => r.loc && isFinite(r.val) && isFinite(r.t));
+}
+
+// Per i laghi il livello in m s.l.m. è "height"; "height_abs" solo come riserva
+function soloLivello(righe, id){
+  const loc = righe.filter(r => r.loc === id);
+  const h = loc.filter(r => r.par === "height");
+  return (h.length ? h : loc.filter(r => r.par === "height_abs")).sort((a,b)=>a.t-b.t);
+}
+
+async function scarica(url){
+  const r = await fetch(url, {cache:"no-store"});
+  if (!r.ok) throw new Error("Risposta " + r.status);
+  return r.json();
+}
+
+function stato(cm, lago, livello){
+  if (livello >= lago.pericolo[0]){
+    let g = 2; lago.pericolo.forEach((s,i)=>{ if (livello >= s) g = i+2; });
+    return {testo:"Piena, grado di pericolo " + g, colore:"var(--piena)", chiaro:false};
+  }
+  const s = lago.soglie;
+  if (cm <= s.moltoSotto) return {testo:"Molto sotto la norma", colore:"var(--molto-sotto)"};
+  if (cm <= s.sotto)      return {testo:"Sotto la norma",       colore:"var(--sotto)", chiaro:true};
+  if (cm <  s.sopra)      return {testo:"Nella norma",          colore:"var(--norma)"};
+  if (cm <  s.moltoSopra) return {testo:"Sopra la norma",       colore:"var(--sopra)"};
+  return {testo:"Molto sopra la norma", colore:"var(--molto-sopra)"};
+}
+
+function valoreVicino(serie, t){
+  let best = null, diff = Infinity;
+  for (const r of serie){ const d = Math.abs(r.t - t); if (d < diff){ diff = d; best = r; } }
+  return diff <= 3*3600*1000 ? best : null;   // accetta fino a 3 ore di scarto
+}
+
+// Media giornaliera per il grafico (30 punti invece di migliaia)
+function medieGiornaliere(serie){
+  const g = new Map();
+  for (const r of serie){
+    const k = new Date(r.t).toLocaleDateString("sv-SE",{timeZone:"Europe/Zurich"});
+    const o = g.get(k) || {s:0,n:0,t:r.t}; o.s += r.val; o.n++; g.set(k,o);
+  }
+  return [...g.values()].map(o => ({t:o.t, val:o.s/o.n}));
+}
+
+// Media storica interpolata giorno per giorno (per una linea morbida nel grafico)
+function mediaDelGiorno(lago, t){
+  const d = new Date(t), m = d.getMonth();
+  const giorni = new Date(d.getFullYear(), m+1, 0).getDate();
+  const f = (d.getDate() - 0.5) / giorni - 0.5;          // -0.5..+0.5 attorno a metà mese
+  const altro = f >= 0 ? (m+1)%12 : (m+11)%12;
+  return lago.medie[m] + (lago.medie[altro] - lago.medie[m]) * Math.abs(f);
+}
+
+// ===== Grafico SVG =====
+function grafico(lago, serie){
+  if (serie.length < 2) return "";
+  const W = 600, H = 230, pl = 80, pr = 10, pt = 12, pb = 30;
+  const medie = serie.map(p => mediaDelGiorno(lago,p.t));
+  const tutti = serie.map(p=>p.val).concat(medie);
+  let lo = Math.min(...tutti), hi = Math.max(...tutti);
+  const pad = Math.max((hi-lo)*0.15, 0.05); lo -= pad; hi += pad;
+  const t0 = serie[0].t, t1 = serie[serie.length-1].t;
+  const x = t => pl + (W-pl-pr) * (t - t0) / Math.max(1, t1 - t0);
+  const y = v => pt + (H-pt-pb) * (hi - v) / (hi - lo);
+
+  const linea = serie.map((p,i)=>(i?"L":"M")+x(p.t).toFixed(1)+" "+y(p.val).toFixed(1)).join(" ");
+  const area = linea + ` L${x(t1).toFixed(1)} ${H-pb} L${x(t0).toFixed(1)} ${H-pb} Z`;
+  const media = serie.map((p,i)=>(i?"L":"M")+x(p.t).toFixed(1)+" "+y(medie[i]).toFixed(1)).join(" ");
+
+  // tacche asse verticale
+  let tacche = "";
+  for (let i=0;i<=3;i++){
+    const v = lo + (hi-lo)*i/3;
+    tacche += `<text x="${pl-6}" y="${(y(v)+6).toFixed(1)}" text-anchor="end" font-size="19" fill="var(--muted)">${fmtM(v)}</text>
+      <line x1="${pl}" x2="${W-pr}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="var(--line)" stroke-width="1"/>`;
+  }
+  const dataBreve = t => new Date(t).toLocaleDateString("it-CH",{day:"numeric",month:"short"});
+  const ultimo = serie[serie.length-1];
+
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Livello del ${lago.nome} negli ultimi 30 giorni">
+    ${tacche}
+    <path d="${area}" fill="var(--lakefill)"/>
+    <path d="${media}" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="5 4"/>
+    <path d="${linea}" fill="none" stroke="var(--lake)" stroke-width="2.2" stroke-linejoin="round"/>
+    <circle cx="${x(ultimo.t).toFixed(1)}" cy="${y(ultimo.val).toFixed(1)}" r="4" fill="var(--lake)"/>
+    <text x="${pl}" y="${H-6}" font-size="19" fill="var(--muted)">${dataBreve(t0)}</text>
+    <text x="${W-pr}" y="${H-6}" font-size="19" fill="var(--muted)" text-anchor="end">${dataBreve(t1)}</text>
+  </svg>
+  <div class="legenda"><span>Livello (media del giorno)</span><span class="media">Media storica del mese</span></div>`;
+}
+
+// ===== Disegno di una scheda lago =====
+function scheda(lago, ultimo, storia){
+  const mese = new Date(ultimo.t).getMonth();
+  const media = lago.medie[mese];
+  const cm = Math.round((ultimo.val - media)*100);
+  const st = stato(cm, lago, ultimo.val);
+
+  let tendenza = "Non disponibile";
+  if (storia.length){
+    const ieri = valoreVicino(storia, ultimo.t - 24*3600*1000);
+    if (ieri){
+      const d = Math.round((ultimo.val - ieri.val)*100);
+      tendenza = d === 0 ? "Stabile" : (d > 0 ? `In salita, +${d} cm` : `In calo, ${d} cm`);
+    }
+  }
+  let trenta = "";
+  if (storia.length){
+    const prima = storia[0];
+    const d = Math.round((ultimo.val - prima.val)*100);
+    trenta = `<dt>30 giorni</dt><dd>${d >= 0 ? "+" : ""}${d} cm</dd>`;
+  }
+
+  const ora = new Date(ultimo.t).toLocaleString("it-CH",{weekday:"short",day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
+  const scarto = cm === 0 ? "pari alla media" : `${cm > 0 ? "+" : ""}${cm} cm rispetto alla media`;
+
+  return `<section class="lago" aria-labelledby="t${lago.id}">
+    <div class="top"><h2 id="t${lago.id}">${lago.nome}</h2><span class="staz">Stazione ${lago.stazione}</span></div>
+    <p class="livello">${fmtM(ultimo.val)}<small>m s.l.m.</small></p>
+    <span class="stato ${st.chiaro ? "dark-text" : ""}" style="background:${st.colore}">${st.testo}</span>
+    <dl class="righe">
+      <dt>Scarto</dt><dd>${scarto} di ${MESI[mese]} (${fmtM(media)} m)</dd>
+      <dt>Ultime 24 ore</dt><dd>${tendenza}</dd>
+      ${trenta}
+      <dt>Misura</dt><dd>${ora}</dd>
+    </dl>
+    <div class="grafico">${grafico(lago, medieGiornaliere(storia))}</div>
+  </section>`;
+}
+
+// ===== Caricamento =====
+async function carica(){
+  const box = $("#laghi");
+  box.classList.add("caricamento");
+  $("#errore").innerHTML = "";
+  const ids = LAGHI.map(l=>l.id).join(",");
+  const oggi = new Date(), da = new Date(oggi.getTime() - 30*24*3600*1000);
+  const fine = new Date(oggi.getTime() + 24*3600*1000);
+
+  let ultimi = [], storia = [], problema = null;
+  try {
+    ultimi = leggiPayload(await scarica(`${API}/latest?locations=${ids}&app=${APP}`));
+  } catch(e){ problema = e; }
+  try {
+    storia = leggiPayload(await scarica(`${API}/daterange?locations=${ids}&startdate=${ymd(da)}&enddate=${ymd(fine)}&app=${APP}`));
+  } catch(e){ if (!problema) problema = null; }
+
+  let dati = LAGHI.map(l => {
+    const s = soloLivello(storia, l.id);
+    const u = soloLivello(ultimi, l.id);
+    const ult = u.length ? u[u.length-1] : (s.length ? s[s.length-1] : null);
+    return {lago:l, ultimo:ult, storia:s};
+  });
+
+  const ok = dati.some(d => d.ultimo);
+  if (ok){
+    try { localStorage.setItem(CHIAVE_CACHE, JSON.stringify({salvato:Date.now(), dati:dati.map(d=>({id:d.lago.id,ultimo:d.ultimo,storia:d.storia}))})); } catch(e){}
+  } else {
+    // Nessun dato nuovo: provo con l'ultima copia salvata
+    let cache = null;
+    try { cache = JSON.parse(localStorage.getItem(CHIAVE_CACHE)); } catch(e){}
+    if (cache && cache.dati){
+      dati = LAGHI.map(l => { const c = cache.dati.find(x=>x.id===l.id) || {}; return {lago:l, ultimo:c.ultimo||null, storia:c.storia||[]}; });
+      $("#errore").innerHTML = `<div class="errore">Dati non aggiornati: il servizio non risponde. Mostro i valori salvati il ${new Date(cache.salvato).toLocaleString("it-CH")}.</div>`;
+    } else {
+      $("#errore").innerHTML = `<div class="errore"><strong>Livelli non disponibili.</strong>
+        Il servizio dati non ha risposto${problema ? " (" + problema.message + ")" : ""}. Riprova tra qualche minuto con «Aggiorna».
+        Nel frattempo puoi consultare le schede ufficiali di
+        <a href="https://www.hydrodaten.admin.ch/it/seen-und-fluesse/stations/2022" target="_blank" rel="noopener">Locarno</a> e
+        <a href="https://www.hydrodaten.admin.ch/it/seen-und-fluesse/stations/2101" target="_blank" rel="noopener">Melide</a>.</div>`;
+    }
+  }
+
+  box.innerHTML = dati.filter(d=>d.ultimo).map(d => scheda(d.lago, d.ultimo, d.storia)).join("");
+  box.classList.remove("caricamento");
+}
+
+$("#aggiorna").addEventListener("click", carica);
+carica();
+setInterval(carica, 30*60*1000);
+</script>
+</body>
+</html>
