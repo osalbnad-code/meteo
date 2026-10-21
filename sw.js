@@ -1,6 +1,6 @@
 // Service worker: rende Meteo installabile e sempre aggiornato
-const CACHE = 'meteo-v2';
-const FILES = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
+const CACHE = 'meteo-v3';
+const FILES = ['./', './index.html', './laghi.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));

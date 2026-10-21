@@ -7,14 +7,14 @@
 <meta name="theme-color" content="#2F6FB0">
 <style>
 :root{
-  --bg:#EEF3F5; --card:#FFFFFF; --ink:#13293D; --muted:#5B6F80; --line:#D3DEE5;
+  --bg:#E8F0F7; --card:#FFFFFF; --ink:#14273A; --muted:#5C7084; --line:#D2DEE9;
   --lake:#2F6FB0; --lakefill:rgba(47,111,176,.16);
   --molto-sotto:#A4521E; --sotto:#C8862B; --norma:#3E7F5C; --sopra:#2F6FB0; --molto-sopra:#1C3F8F; --piena:#B42335;
   color-scheme:light;
 }
 @media (prefers-color-scheme:dark){
   :root{
-    --bg:#0F1A24; --card:#172634; --ink:#E6EEF4; --muted:#93A7B8; --line:#2A3D4F;
+    --bg:#0D1722; --card:#162433; --ink:#E3ECF4; --muted:#93A8BC; --line:#253A4E;
     --lake:#6EA6E0; --lakefill:rgba(110,166,224,.20);
     --molto-sotto:#B9602A; --sotto:#E3B060; --norma:#72C094; --sopra:#6EA6E0; --molto-sopra:#9DB8F5; --piena:#F07082;
     color-scheme:dark;
@@ -28,7 +28,7 @@ body{
   padding:calc(env(safe-area-inset-top,0px) + 16px) 16px calc(env(safe-area-inset-bottom,0px) + 24px);
   line-height:1.4;
 }
-.wrap{max-width:640px;margin:0 auto}
+.wrap{max-width:620px;margin:0 auto}
 header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
 header h1{font-size:1.5rem;margin:0;font-weight:700}
 .btn{
@@ -36,7 +36,7 @@ header h1{font-size:1.5rem;margin:0;font-weight:700}
   border:1px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer;text-decoration:none;
 }
 .btn:focus-visible{outline:3px solid var(--lake);outline-offset:2px}
-.lago{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px}
+.lago{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:16px;margin-bottom:14px}
 .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
 .top h2{margin:0;font-size:1.2rem}
 .staz{color:var(--muted);font-size:.85rem}
@@ -48,7 +48,7 @@ header h1{font-size:1.5rem;margin:0;font-weight:700}
 .righe dt{color:var(--muted)}
 .righe dd{margin:0;font-variant-numeric:tabular-nums}
 .grafico{margin-top:14px}
-.grafico svg{width:100%;height:auto;display:block}
+.grafico svg{width:100%;height:auto;display:block;overflow:visible}
 .legenda{display:flex;gap:16px;color:var(--muted);font-size:.8rem;margin-top:4px;flex-wrap:wrap}
 .legenda span::before{content:"";display:inline-block;width:18px;height:0;border-top:2px solid var(--lake);vertical-align:middle;margin-right:6px}
 .legenda span.media::before{border-top:2px dashed var(--muted)}
@@ -181,9 +181,14 @@ function mediaDelGiorno(lago, t){
 }
 
 // ===== Grafico SVG =====
+function larghezzaGrafico(){
+  const w = document.querySelector(".wrap").clientWidth - 34;   // tolgo i margini interni della scheda
+  return Math.max(260, Math.round(w));
+}
 function grafico(lago, serie){
   if (serie.length < 2) return "";
-  const W = 600, H = 230, pl = 80, pr = 10, pt = 12, pb = 30;
+  // Il disegno ha la larghezza reale della scheda: le scritte restano di 12 px su telefono e PC
+  const W = larghezzaGrafico(), H = Math.round(Math.min(220, Math.max(150, W*0.36))), pl = 58, pr = 8, pt = 10, pb = 24;
   const medie = serie.map(p => mediaDelGiorno(lago,p.t));
   const tutti = serie.map(p=>p.val).concat(medie);
   let lo = Math.min(...tutti), hi = Math.max(...tutti);
@@ -200,7 +205,7 @@ function grafico(lago, serie){
   let tacche = "";
   for (let i=0;i<=3;i++){
     const v = lo + (hi-lo)*i/3;
-    tacche += `<text x="${pl-6}" y="${(y(v)+6).toFixed(1)}" text-anchor="end" font-size="19" fill="var(--muted)">${fmtM(v)}</text>
+    tacche += `<text x="${pl-6}" y="${(y(v)+4).toFixed(1)}" text-anchor="end" font-size="12" fill="var(--muted)">${fmtM(v)}</text>
       <line x1="${pl}" x2="${W-pr}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="var(--line)" stroke-width="1"/>`;
   }
   const dataBreve = t => new Date(t).toLocaleDateString("it-CH",{day:"numeric",month:"short"});
@@ -212,8 +217,8 @@ function grafico(lago, serie){
     <path d="${media}" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="5 4"/>
     <path d="${linea}" fill="none" stroke="var(--lake)" stroke-width="2.2" stroke-linejoin="round"/>
     <circle cx="${x(ultimo.t).toFixed(1)}" cy="${y(ultimo.val).toFixed(1)}" r="4" fill="var(--lake)"/>
-    <text x="${pl}" y="${H-6}" font-size="19" fill="var(--muted)">${dataBreve(t0)}</text>
-    <text x="${W-pr}" y="${H-6}" font-size="19" fill="var(--muted)" text-anchor="end">${dataBreve(t1)}</text>
+    <text x="${pl}" y="${H-5}" font-size="12" fill="var(--muted)">${dataBreve(t0)}</text>
+    <text x="${W-pr}" y="${H-5}" font-size="12" fill="var(--muted)" text-anchor="end">${dataBreve(t1)}</text>
   </svg>
   <div class="legenda"><span>Livello (media del giorno)</span><span class="media">Media storica del mese</span></div>`;
 }
@@ -300,11 +305,27 @@ async function carica(){
     }
   }
 
-  box.innerHTML = dati.filter(d=>d.ultimo).map(d => scheda(d.lago, d.ultimo, d.storia)).join("");
+  ultimiDati = dati;
+  disegna(dati);
   box.classList.remove("caricamento");
 }
 
+function disegna(dati){
+  larghezzaPrecedente = larghezzaGrafico();
+  $("#laghi").innerHTML = dati.filter(d=>d.ultimo).map(d => scheda(d.lago, d.ultimo, d.storia)).join("");
+}
+
 $("#aggiorna").addEventListener("click", carica);
+
+// Se cambia la larghezza della finestra ridisegno con gli ultimi dati, senza riscaricarli
+let ultimiDati = null, timerResize = null, larghezzaPrecedente = 0;
+window.addEventListener("resize", () => {
+  clearTimeout(timerResize);
+  timerResize = setTimeout(() => {
+    const w = larghezzaGrafico();
+    if (ultimiDati && w !== larghezzaPrecedente) disegna(ultimiDati);
+  }, 200);
+});
 carica();
 setInterval(carica, 30*60*1000);
 </script>

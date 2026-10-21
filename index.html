@@ -151,6 +151,10 @@ button{font:inherit;color:inherit;cursor:pointer}
 .aqgrid b{color:var(--ink)}
 .conf{display:block;font-size:.72rem;font-weight:700;margin-top:2px}
 .conf.alta{color:#2E9B5F}.conf.media{color:var(--warm)}.conf.bassa{color:var(--hot)}
+.lakes-link{display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--ink);text-decoration:none}
+.lakes-link h2{margin:0}
+.lakes-link span{color:var(--muted);font-size:.9rem}
+.lakes-link b{color:var(--accent);font-size:1.4rem;line-height:1}
 .links{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:18px}
 .links a{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:8px 14px;color:var(--ink);text-decoration:none;font-weight:600;font-size:.9rem}
 .note{color:var(--muted);font-size:.78rem;margin:8px 0 0}
@@ -211,6 +215,11 @@ button{font:inherit;color:inherit;cursor:pointer}
     <div class="mg" id="mGrid"></div>
     <div class="phases" id="mPhases"></div>
   </section>
+
+  <a class="card lakes-link" href="laghi.html">
+    <div><h2>🌊 Livelli dei laghi</h2><span>Lago Maggiore e Lago di Lugano rispetto alla norma</span></div>
+    <b aria-hidden="true">›</b>
+  </a>
 
   <p class="hint" id="hint" hidden>Tocca un giorno per la previsione ora per ora</p>
   <ul class="days" id="days" hidden></ul>
