@@ -1,0 +1,92 @@
+name: Aggiorna laghi
+
+# Ogni ora scarica i livelli di Lago Maggiore (2022) e Lago di Lugano (2101)
+# e li salva in laghi.json, la copia di riserva letta da laghi.html.
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: aggiorna-laghi
+  cancel-in-progress: false
+
+jobs:
+  aggiorna:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Scarica i livelli
+        run: |
+          python3 - <<'PY'
+          import json, time, urllib.request, datetime, sys
+
+          API = "https://api.existenz.ch/apiv1/hydro"
+          IDS = "2022,2101"
+
+          def scarica(url):
+              for tentativo in range(3):
+                  try:
+                      with urllib.request.urlopen(url, timeout=30) as r:
+                          return json.load(r).get("payload", [])
+                  except Exception as e:
+                      print("Tentativo", tentativo + 1, "fallito:", e)
+                      time.sleep(20)
+              return None
+
+          oggi = datetime.date.today()
+          da = (oggi - datetime.timedelta(days=31)).isoformat()
+          a = (oggi + datetime.timedelta(days=1)).isoformat()
+
+          latest = scarica(f"{API}/latest?locations={IDS}&app=meteo-danny-action")
+          storia = scarica(f"{API}/daterange?locations={IDS}&startdate={da}&enddate={a}&app=meteo-danny-action")
+
+          if not latest and not storia:
+              print("Servizio non raggiungibile: tengo la copia precedente.")
+              sys.exit(0)
+
+          def solo_livello(righe):
+              return [r for r in (righe or []) if r.get("par") in ("height", "height_abs")]
+
+          # Storico ridotto a un valore all'ora: basta per grafico e tendenza
+          ridotta, visti = [], set()
+          for r in sorted(solo_livello(storia), key=lambda r: r["timestamp"]):
+              chiave = (r["loc"], r["par"], int(r["timestamp"]) // 3600)
+              if chiave not in visti:
+                  visti.add(chiave)
+                  ridotta.append(r)
+
+          nuovo = {
+              "aggiornato": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
+              "latest": solo_livello(latest),
+              "storia": ridotta,
+          }
+
+          # Se il servizio ha risposto solo in parte, conservo la parte mancante dalla copia precedente
+          try:
+              vecchio = json.load(open("laghi.json", encoding="utf-8"))
+              if not nuovo["latest"]: nuovo["latest"] = vecchio.get("latest", [])
+              if not nuovo["storia"]: nuovo["storia"] = vecchio.get("storia", [])
+          except Exception:
+              pass
+
+          json.dump(nuovo, open("laghi.json", "w", encoding="utf-8"), separators=(",", ":"))
+          print("Salvati", len(nuovo["latest"]), "valori attuali e", len(nuovo["storia"]), "valori orari.")
+          PY
+
+      - name: Salva nel repository
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add laghi.json
+          if git diff --cached --quiet; then
+            echo "Nessuna novità."
+          else
+            git commit -m "Livelli laghi aggiornati"
+            git push
+          fi
