@@ -4,7 +4,7 @@ name: Aggiorna laghi
 # e li salva in laghi.json, la copia di riserva letta da laghi.html.
 on:
   schedule:
-    - cron: "17 * * * *"
+    - cron: "17,47 * * * *"
   workflow_dispatch:
 
 permissions:
