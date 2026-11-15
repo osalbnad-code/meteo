@@ -358,7 +358,12 @@ function ensSummary(e){
   });
   return out;
 }
-async function getJSON(url){const r=await fetch(url);if(!r.ok)throw new Error('HTTP '+r.status);return r.json()}
+/* scaricamento con tempo limite: con la rete lenta si passa ai dati salvati invece di restare in attesa */
+async function getJSON(url,ms=15000){
+  const ctrl=new AbortController(), timer=setTimeout(()=>ctrl.abort(),ms);
+  try{const r=await fetch(url,{signal:ctrl.signal});if(!r.ok)throw new Error('HTTP '+r.status);return await r.json()}
+  finally{clearTimeout(timer)}
+}
 
 /* unisce il modello globale (7 giorni) con MeteoSvizzera ICON-CH (fino a 5 giorni):
    dove il modello svizzero ha un valore, vince lui */
@@ -390,7 +395,9 @@ function merge(a,b){
 }
 
 let PACK=null;
+let loadSeq=0;   /* conta le richieste: vale solo la risposta dell'ultima località scelta */
 async function load(){
+  const my=++loadSeq, luogo=place;
   $('place').textContent=place.name; renderFavs();
   $('updated').textContent='Aggiornamento…';
   const base='https://api.open-meteo.com/v1/forecast?latitude='+place.lat+'&longitude='+place.lon+'&timezone=auto&forecast_days=7';
@@ -401,13 +408,15 @@ async function load(){
   const EN='https://ensemble-api.open-meteo.com/v1/ensemble?'+ll+'&forecast_days=7&models=icon_seamless&hourly=temperature_2m,precipitation';
   try{
     const [ra,rb,rq,re]=await Promise.allSettled([getJSON(A),getJSON(B),getJSON(AQ),getJSON(EN)]);
+    if(my!==loadSeq)return;   /* nel frattempo è stata scelta un'altra località */
     if(ra.status!=='fulfilled')throw ra.reason;
     const data=merge(ra.value,rb.status==='fulfilled'?rb.value:null);
     let ens=null; try{ens=re.status==='fulfilled'?ensSummary(re.value):null}catch(_){}
-    const pack={place,data,aq:rq.status==='fulfilled'&&rq.value.current?{current:rq.value.current}:null,ens,at:Date.now()};
+    const pack={place:luogo,data,aq:rq.status==='fulfilled'&&rq.value.current?{current:rq.value.current}:null,ens,at:Date.now()};
     try{localStorage.setItem(KEY_DATA,JSON.stringify(pack))}catch(e){}
     PACK=pack; render(pack,false);
   }catch(e){
+    if(my!==loadSeq)return;
     let cached=null; try{cached=JSON.parse(localStorage.getItem(KEY_DATA))}catch(_){}
     if(cached&&cached.place&&same(cached.place,place)){PACK=cached;render(cached,true)}
     else{
@@ -421,7 +430,10 @@ async function load(){
 
 const hhmm=t=>t?String(t).slice(11,16):'--:--';
 const dateOf=t=>{const [y,m,d]=t.split('-').map(Number);return new Date(y,m-1,d)};
-const dayLabel=(i,t)=>{const dt=dateOf(t);return i===0?'Oggi':i===1?'Domani':GIORNI[dt.getDay()]};
+/* etichetta dalla data vera (non dalla posizione): senza connessione i dati salvati possono essere di ieri */
+const dayLabel=(i,t)=>{const dt=dateOf(t),o=new Date();o.setHours(0,0,0,0);
+  const diff=Math.round((dt-o)/864e5);
+  return diff===0?'Oggi':diff===1?'Domani':diff===-1?'Ieri':GIORNI[dt.getDay()]};
 const shortDate=t=>{const dt=dateOf(t);return dt.getDate()+' '+MESI[dt.getMonth()]};
 
 /* codice rappresentativo della giornata, calcolato ora per ora tra le 8 e le 19 */
